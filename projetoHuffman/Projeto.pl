@@ -74,3 +74,29 @@ gerarCodigo(Node(_,Esq,Dir),Prefixo,SubArvores) :-
 
 % Inicia a recursão com um código vazio
 gerarCodigo(arvore, Codes) :- gerarCodigo(arvore, [], Codes).
+
+
+
+% Se o caractere for encontrado na tabela
+codificarTexto(_,[],[]). % Caso base
+codificarTexto(Tabela, [C|Cs], R) :- 
+    encontrarCodigo(X, Tabela, Codigo), % Busca o código
+    codificarTexto(Tabela,Cs,R),
+    append(Codigo,Xs,R).
+
+% Caso em que o caractere não tem código, retornamos uma string vazia.
+codificarTexto(_,[C|Cs],R) :- \+ 
+    encontrarCodigo(C, _, _), % Caso em que o caractere X não está na tabela
+    codificarTexto(_,Cs,R)
+
+% Busca o código associado ao caractere C na tabela.
+encontrarCodigo(C,[C,Codigo|_],Codigo). % Se C for o primeiro, retorna o código.
+encontrarCodigo(C,[_|Ys],Codigo) :- encontrarCodigo(C,Ys,Codigo)
+
+
+
+% Função auxiliar para exibir a tabela de códigos de Huffman
+exibirTabelaCodigos([]). % Caso base
+exibirTabelaCodigos([C,Codigo|Cs]) :- 
+    write(C), write(': '), write(Codigo),nl,
+    exibirTabelaCodigos(Cs).
