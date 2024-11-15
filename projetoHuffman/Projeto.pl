@@ -44,7 +44,14 @@ criarFolha([C,F|Xs], [Leaf(C,F)|Ys]) :-
 
 
 % Constrói a árvore de Huffman
-construirArvore([],[]). % Caso base vazio
+construirArvore([Arvore],Arvore). % Caso base se só tiver uma arvore
+construirArvore(ListaArvores,Arvore) :- 
+    sort(2,@=<,ListaArvores,F), % Ordena a lista de árvores pela frequência
+    F = [Esq,Dir|Xs], % Tira os dois com menor peso
+    peso is (pesoEsq + pesoDir),
+    (Esq = node(Fesq,_,_), Dir = node(Fdir,_,_)), 
+    NovaArvore = node(F,Esq,Dir), % Cria um nó que combina as árvores
+    construir_arvore([NovaArvore|Xs],Arvore).
 
 
 % Calcula o peso (frequência) de uma folha
@@ -53,8 +60,8 @@ peso(Leaf(_,F),F).
 % Calcula o peso (frequência) de um nó interno
 peso(Node(F,Esq,Dir),F) :- 
     peso(Esq,Fesq), % Peso nó esquerdo
-    peso(Dir,fdi), % Peso nó direito
-    F is Fesq + Fdir. % Soma dos pesos
+    peso(Dir,Fdir), % Peso nó direito
+    Freq is Fesq + Fdir. % Soma dos pesos
 
 
 % Exibe a tabela de caracteres e suas frequências
