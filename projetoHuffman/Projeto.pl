@@ -1,109 +1,81 @@
-% Define a estrutura da árvore binária
-arvore([]). % Caso base 
-arvore([E,Esq,Dir]) :- 
-    arvore(Esq), arvore(Dir). % Um nó interno tem uma subárvore esquerda e uma subárvore direita
+% Lê o conteúdo de um arquivo
+ler_arquivo(Nome, Conteudo) :-
+    open(Nome, read, Stream),
+    read_string(Stream, _, Conteudo),
+    close(Stream).
 
+% Escreve conteúdo em um arquivo
+escrever_arquivo(Nome, Conteudo) :-
+    open(Nome, write, Stream),
+    write(Stream, Conteudo),
+    close(Stream).
 
-% Conta a frequência dos caracteres no texto
-contarFrequencia([],[]). % Caso base 
-contarFrequencia(Texto, F) :- 
-    msort(Texto, TextoOrd), % Ordena o texto
-    contarFrequenciaOrd(TextoOrd,F). % Conta as ocorrências dos caracteres no texto ordenado
+% Conta a frequência de cada caractere no texto
+contar_frequencia(Texto, Frequencias) :-
+    msort(Texto, TextoOrd), % Ordena o texto para agrupar caracteres iguais
+    contar_frequencia_ord(TextoOrd, Frequencias).
 
-% Contagem de ocorrências de caracteres ordenados
-contarFrequenciaOrd([],[]). % Caso base 
-contarFrequenciaOrd([C|Cs],R) :- contarFrequenciaOrd(Cs,C,1,R).
+% Conta os caracteres ordenados
+contar_frequencia_ord([], []).
+contar_frequencia_ord([C|Cs], [(C, Freq)|Resto]) :-
+    contar_ocorrencias(C, [C|Cs], Freq, Restantes),
+    contar_frequencia_ord(Restantes, Resto).
 
-contarFrequenciaOrd([],C,F,[(C,F)]).
-contarFrequenciaOrd([C|Cs],C,F,R) :- 
-    F1 is F+1, contarFrequenciaOrd(Cs,C,F1,R). % Conta ocorrências do caractere atual
-contarFrequenciaOrd([A|As],C,N,[(C,N)|Xs]) :- 
-    contarFrequenciaOrd(As,A,1,X). % Remove as ocorrências contadas
+% Conta quantas vezes o caractere aparece no início da lista
+contar_ocorrencias(_, [], 0, []).
+contar_ocorrencias(C, [C|Cs], Freq, Restantes) :-
+    contar_ocorrencias(C, Cs, Freq1, Restantes),
+    Freq is Freq1 + 1.
+contar_ocorrencias(C, [X|Xs], 0, [X|Xs]) :-
+    C \= X.
 
+% Cria uma lista de folhas para a árvore de Huffman
+criar_folhas(Frequencias, Folhas) :-
+    maplist(criar_folha, Frequencias, Folhas).
 
-% Conta as ocorrências de X em uma lista
-contarOcorrencias(0,_,[]). % Caso base 
-contarOcorrencias(N,X,[X|Xs]) :- 
-    N1 is N+1, (N1,X,Xs). % Incrementa a contagem e continua na lista
-contarOcorrencias(N,X,[Y|Xs]) :- 
-    X /= Y, contarOcorrencias(N,X,Xs). % Ignora o caractere e continua na lista
-
-
-% Remove as ocorrências de X de uma lista
-removerOcorrencias([],_,[]). % Caso base
-removerOcorrencias([X|As], X, Xs) :- 
-    removerOcorrencias(As,X,Xs). % Ignora o caractere e continua na lista
-removerOcorrencias([A|As], X, [A|Xs]) :- 
-    removerOcorrencias(As,X,Xs). Mantém o caractere e continua na lista
-
-
-% Cria uma lista de folhas para os caracteres e suas frequências
-criarFolha([],[]). % Caso base 
-criarFolha([C,F|Xs], [Leaf(C,F)|Ys]) :- 
-    criarFolha(Xs,Ys). % Cria uma folha para cada par de caractere e frequência
-
+criar_folha((C, Freq), folha(C, Freq)).
 
 % Constrói a árvore de Huffman
-construirArvore([Arvore],Arvore). % Caso base se só tiver uma arvore
-construirArvore(ListaArvores,Arvore) :- 
-    sort(2,@=<,ListaArvores,F), % Ordena a lista de árvores pela frequência
-    F = [Esq,Dir|Xs], % Tira os dois com menor peso
-    peso is (pesoEsq + pesoDir),
-    (Esq = node(Fesq,_,_), Dir = node(Fdir,_,_)), 
-    NovaArvore = node(F,Esq,Dir), % Cria um nó que combina as árvores
-    construir_arvore([NovaArvore|Xs],Arvore).
+construir_arvore([Arvore], Arvore).
+construir_arvore(Folhas, Arvore) :-
+    sort(2, @=<, Folhas, Ordenado),
+    Ordenado = [Esq, Dir|Resto],
+    combinar(Esq, Dir, NovoNo),
+    construir_arvore([NovoNo|Resto], Arvore).
 
-
-% Calcula o peso (frequência) de uma folha
-peso(Leaf(_,F),F). 
-
-% Calcula o peso (frequência) de um nó interno
-peso(Node(F,Esq,Dir),F) :- 
-    peso(Esq,Fesq), % Peso nó esquerdo
-    peso(Dir,Fdir), % Peso nó direito
-    Freq is Fesq + Fdir. % Soma dos pesos
-
-
-% Exibe a tabela de caracteres e suas frequências
-exibirTabela([]). % Caso base 
-exibirTabela([C,F|Xs]) :- 
-    write(write('    '), write(C), write('    '), write(F)),
-    exibirTabela(Xs).
-    
+combinar(folha(C1, F1), folha(C2, F2), no(F, folha(C1, F1), folha(C2, F2))) :-
+    F is F1 + F2.
+combinar(no(F1, Esq1, Dir1), folha(C2, F2), no(F, no(F1, Esq1, Dir1), folha(C2, F2))) :-
+    F is F1 + F2.
+combinar(folha(C1, F1), no(F2, Esq2, Dir2), no(F, folha(C1, F1), no(F2, Esq2, Dir2))) :-
+    F is F1 + F2.
+combinar(no(F1, Esq1, Dir1), no(F2, Esq2, Dir2), no(F, no(F1, Esq1, Dir1), no(F2, Esq2, Dir2))) :-
+    F is F1 + F2.
 
 % Gera o código de Huffman para cada caractere
-gerarCodigo(Leaf(C, _), Prefixo, [(C, Prefixo)]).
+gerar_codigos(folha(C, _), Prefixo, [(C, Prefixo)]).
+gerar_codigos(no(_, Esq, Dir), Prefixo, Codigos) :-
+    gerar_codigos(Esq, [0|Prefixo], CodEsq),
+    gerar_codigos(Dir, [1|Prefixo], CodDir),
+    append(CodEsq, CodDir, Codigos).
 
-gerarCodigo(Node(_,Esq,Dir),Prefixo,SubArvores) :- 
-    gerarCodigo(Esq,[0|Prefixo],SubArvEsq), % Adiciona '0' ao prefixo para a esquerda
-    gerarCodigo(Dir,[1|Prefixo],SubArvDir), % Adiciona '1' ao prefixo para a direita
-    append(SubArvEsq,SubArvDir,SubArvores). % Combina os resultados das subárvores
+% Codifica o texto com os códigos de Huffman
+codificar_texto(_, [], []).
+codificar_texto(Codigos, [C|Texto], Codificado) :-
+    member((C, Codigo), Codigos),
+    codificar_texto(Codigos, Texto, CodResto),
+    append(Codigo, CodResto, Codificado).
 
-% Inicia a recursão com um código vazio
-gerarCodigo(arvore, Codes) :- gerarCodigo(arvore, [], Codes).
-
-
-
-% Se o caractere for encontrado na tabela
-codificarTexto(_,[],[]). % Caso base
-codificarTexto(Tabela, [C|Cs], R) :- 
-    encontrarCodigo(X, Tabela, Codigo), % Busca o código
-    codificarTexto(Tabela,Cs,R),
-    append(Codigo,Xs,R).
-
-% Caso em que o caractere não tem código, retornamos uma string vazia.
-codificarTexto(_,[C|Cs],R) :- \+ 
-    encontrarCodigo(C, _, _), % Caso em que o caractere X não está na tabela
-    codificarTexto(_,Cs,R)
-
-% Busca o código associado ao caractere C na tabela.
-encontrarCodigo(C,[C,Codigo|_],Codigo). % Se C for o primeiro, retorna o código.
-encontrarCodigo(C,[_|Ys],Codigo) :- encontrarCodigo(C,Ys,Codigo)
-
-
-
-% Função auxiliar para exibir a tabela de códigos de Huffman
-exibirTabelaCodigos([]). % Caso base
-exibirTabelaCodigos([C,Codigo|Cs]) :- 
-    write(C), write(': '), write(Codigo),nl,
-    exibirTabelaCodigos(Cs).
+% Função principal
+huffman(ArquivoEntrada, ArquivoSaida) :-
+    ler_arquivo(ArquivoEntrada, Conteudo),
+    string_chars(Conteudo, Chars),
+    contar_frequencia(Chars, Frequencias),
+    criar_folhas(Frequencias, Folhas),
+    construir_arvore(Folhas, Arvore),
+    gerar_codigos(Arvore, [], Codigos),
+    codificar_texto(Codigos, Chars, Codificado),
+    atomic_list_concat(Codificado, '', Resultado),
+    escrever_arquivo(ArquivoSaida, Resultado),
+    writeln('Arquivo codificado salvo em: '),
+    writeln(ArquivoSaida).
